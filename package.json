@@ -1,0 +1,16 @@
+{
+  "name": "lox.js",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "run": "node src/Lox.js",
+    "tsc": "tsc"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-base": "^14.1.0",
+    "eslint-plugin-import": "^2.20.2",
+    "typescript": "^3.8.3"
+  }
+}
