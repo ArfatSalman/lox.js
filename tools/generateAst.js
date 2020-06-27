@@ -62,11 +62,13 @@ async function main() {
     'Logical : left, operator, right',
     'Unary: operator, right',
     'Variable: name',
+    'Call: callee, paren, args',
   ]);
 
   const stmtClasses = defineAst('Stmt', [
     'Block : statements',
     'Expression : expression',
+    'Function : name, params, body',
     'If : condition, thenBranch, elseBranch',
     'Print : expression',
     'Var : name, initializer',

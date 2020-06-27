@@ -1,6 +1,8 @@
 /* eslint-disable class-methods-use-this */
+// eslint-disable-next-line max-classes-per-file
 const TokenType = require('./TokenType');
 const { Environment } = require('./Environment');
+const { LoxCallable, LoxFunction } = require('./LoxCallable');
 
 function evaluate(expr) {
   return expr.accept(this);
@@ -10,6 +12,7 @@ function isTruthy(value) {
   if (value === null) {
     return false;
   }
+  // return Boolean(value);
   if (typeof value === 'boolean') {
     return value;
   }
@@ -27,10 +30,32 @@ function isEqual(left, right) {
   return left === right;
 }
 
+const globals = new Environment();
+
+class Clock extends LoxCallable {
+  Call() {
+    return Date.now() / 1000;
+  }
+
+  arity() {
+    return 0;
+  }
+
+  toString() {
+    return '<native fn>';
+  }
+}
+
 class Interpreter {
 
   constructor() {
-    this.environment = new Environment();
+    this.environment = globals;
+
+    globals.define('clock', new Clock());
+  }
+
+  static get globals() {
+    return globals;
   }
 
   interpret(statements) {
@@ -126,7 +151,7 @@ class Interpreter {
 
   visitPrintStmt(stmt) {
     const value = evaluate.call(this, stmt.expression);
-    console.log(value);
+    console.log(value.toString());
     return null;
   }
 
@@ -167,8 +192,14 @@ class Interpreter {
     return null;
   }
 
+  visitFunctionStmt(stmt) {
+    const fun = new LoxFunction(stmt);
+    this.environment.define(stmt.name.lexeme, fun);
+    return null;
+  }
+
   visitIfStmt(stmt) {
-    if (isTruthy(stmt.condition)) {
+    if (isTruthy(evaluate.call(this, stmt.condition))) {
       this.execute(stmt.thenBranch);
     } else if (stmt.elseBranch !== null) {
       this.execute(stmt.elseBranch);
@@ -193,11 +224,27 @@ class Interpreter {
   }
 
   visitWhileStmt(stmt) {
-    const condition = evaluate.call(this, stmt.condition);
-    while (isTruthy(condition)) {
+    while (isTruthy(evaluate.call(this, stmt.condition))) {
       this.execute(stmt.body);
     }
     return null;
+  }
+
+  visitCallExpr(expr) {
+    const callee = evaluate.call(this, expr.callee);
+    
+    if (expr.args.length !== callee.arity()) {
+      // arity check
+    }
+
+    const args = [];
+    for (const arg of expr.args) {
+      args.push(evaluate.call(this, arg));
+    }
+    if (!(callee instanceof LoxCallable)) {
+      // error
+    }
+    return callee.Call(this, args);
   }
 }
 

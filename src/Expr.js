@@ -95,6 +95,20 @@ class Variable extends Expr {
   }
 }
 
+
+class Call extends Expr {
+  constructor(callee, paren, args) {
+    super();
+    this.callee = callee;
+    this.paren = paren;
+    this.args = args;
+  }
+
+  accept(visitor) {
+    return visitor.visitCallExpr(this);
+  }
+}
+
 module.exports.Expr = Expr;
 module.exports.Assign = Assign;
 module.exports.Binary = Binary;
@@ -103,3 +117,4 @@ module.exports.Literal = Literal;
 module.exports.Logical = Logical;
 module.exports.Unary = Unary;
 module.exports.Variable = Variable;
+module.exports.Call = Call;

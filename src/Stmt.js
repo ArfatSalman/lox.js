@@ -30,6 +30,20 @@ class Expression extends Stmt {
 }
 
 
+class Function extends Stmt {
+  constructor(name, params, body) {
+    super();
+    this.name = name;
+    this.params = params;
+    this.body = body;
+  }
+
+  accept(visitor) {
+    return visitor.visitFunctionStmt(this);
+  }
+}
+
+
 class If extends Stmt {
   constructor(condition, thenBranch, elseBranch) {
     super();
@@ -84,6 +98,7 @@ class While extends Stmt {
 module.exports.Stmt = Stmt;
 module.exports.Block = Block;
 module.exports.Expression = Expression;
+module.exports.Function = Function;
 module.exports.If = If;
 module.exports.Print = Print;
 module.exports.Var = Var;

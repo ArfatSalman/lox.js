@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 /* eslint-disable max-classes-per-file */
 const TokenType = require('./TokenType');
 const {
@@ -7,10 +8,12 @@ const {
   Grouping,
   Variable,
   Assign,
-  Logical
+  Logical,
+  Call,
 } = require('./Expr');
-const { Print, Expression, Var, Block, If, While } = require('./Stmt');
+const { Print, Expression, Var, Block, If, While, Function } = require('./Stmt');
 const LoxExport = require('./Lox');
+const log = require('./utils/log');
 
 class ParseError extends Error {}
 
@@ -154,7 +157,7 @@ class Parser {
         TokenType.GREATER,
         TokenType.GREATER_EQUAL,
         TokenType.LESS,
-        TokenType.LESS_EQUAL
+        TokenType.LESS_EQUAL,
       )
     ) {
       const operator = this.previous();
@@ -196,7 +199,34 @@ class Parser {
       return new Unary(operator, expr);
     }
 
-    return this.primary();
+    return this.call();
+  }
+
+  call() {
+    let expr = this.primary();
+    while (true) {
+      if (this.match(TokenType.LEFT_PAREN)) {
+        expr = this.finishCall(expr);
+      } else {
+        break;
+      }
+    }
+    return expr;
+  }
+
+  finishCall(callee) {
+    const args = [];
+    if (!this.check(TokenType.RIGHT_PAREN)) {
+      args.push(this.expression());
+      while (this.match(TokenType.COMMA)) {
+        if (args.length >= 255) {
+          this.error(this.peek(), 'Cannot have more than 255 arguments.');
+        }
+        args.push(this.expression());
+      }
+    }
+    const paren = this.consume(TokenType.RIGHT_PAREN, 'finishCall: Expect ) after args');
+    return new Call(callee, paren, args);
   }
 
   primary() {
@@ -227,6 +257,7 @@ class Parser {
   printStatement() {
     const value = this.expression();
     this.consume(TokenType.SEMICOLON, 'Expected a ;');
+    console.log({ value });
     return new Print(value);
   }
 
@@ -269,7 +300,52 @@ class Parser {
     return new While(condition, body);
   }
 
+  forStatement() {
+    this.consume(TokenType.LEFT_PAREN, 'Expected left paren');
+    let initializer = null;
+    if (this.match(TokenType.SEMICOLON)) {
+      initializer = null;
+    } else if (this.match(TokenType.VAR)) {
+      initializer = this.varDeclaration();
+    } else {
+      initializer = this.expressionStatement();
+    }
+
+    let condition = null;
+    if (!this.check(TokenType.SEMICOLON)) {
+      condition = this.expression();
+    }
+    this.consume(TokenType.SEMICOLON, 'Expect ";" after loop condition.');
+
+    let increment = null;
+    if (!this.check(TokenType.RIGHT_PAREN)) {
+      increment = this.expression();
+    }
+    this.consume(TokenType.RIGHT_PAREN, 'Expect ")" after for-loop.');
+
+    let body = this.statement();
+
+    if (increment !== null) {
+      body = new Block([body, new Expression(increment)]);
+    }
+
+    if (condition === null) {
+      condition = new Literal(true);
+    }
+
+    body = new While(condition, body);
+
+    if (initializer !== null) {
+      body = new Block([initializer, body]);
+    }
+
+    return body;
+  }
+
   statement() {
+    if (this.match(TokenType.FOR)) {
+      return this.forStatement();
+    }
     if (this.match(TokenType.WHILE)) {
       return this.whileStatement();
     }
@@ -295,8 +371,30 @@ class Parser {
     return new Var(name, initializer);
   }
 
+  function_(kind) {
+    const name = this.consume(TokenType.IDENTIFIER, 'ID expected');
+    this.consume(TokenType.LEFT_PAREN, 'fn: left paren');
+    const parameters = [];
+    if (!this.check(TokenType.RIGHT_PAREN)) {
+      parameters.push(this.consume(TokenType.IDENTIFIER, 'fn: param name'));
+      while (this.match(TokenType.COMMA)) {
+        if (parameters.length >= 255) {
+          this.error(this.peek(), 'too many args');
+        }
+        parameters.push(this.consume(TokenType.IDENTIFIER, 'fn: param name'));
+      }
+    }
+    this.consume(TokenType.RIGHT_PAREN, 'fn: right paren');
+    this.consume(TokenType.LEFT_BRACE, 'fn: left brace');
+    const body = this.block();
+    return new Function(name, parameters, body);
+  }
+
   declaration() {
     try {
+      if (this.match(TokenType.FUN)) {
+        return this.function_("function");
+      }
       if (this.match(TokenType.VAR)) {
         return this.varDeclaration();
       }

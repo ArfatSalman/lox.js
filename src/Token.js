@@ -9,10 +9,6 @@ class Token {
   toString() {
     return `${this.type.toString()} ${this.lexeme} ${this.literal}`;
   }
-
-  // toString() {
-  //   return this.lexeme;
-  // }
 }
 
 module.exports = {
